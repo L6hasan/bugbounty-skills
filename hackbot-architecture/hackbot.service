@@ -1,0 +1,20 @@
+[Unit]
+Description=Hackbot endless bug bounty supervisor (research→recon→hunt→validate→report)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+Environment=HOME=/root
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/root/.local/bin:/root/.hermes/hermes-agent/.hermes/bin
+WorkingDirectory=/root/hackbot-architecture
+ExecStart=/bin/bash /root/hackbot-architecture/supervisor.sh
+Restart=always
+RestartSec=30
+TimeoutStopSec=30
+StandardOutput=append:/root/hackbot-architecture/state/supervisor-stdout.log
+StandardError=append:/root/hackbot-architecture/state/supervisor-stderr.log
+
+[Install]
+WantedBy=multi-user.target

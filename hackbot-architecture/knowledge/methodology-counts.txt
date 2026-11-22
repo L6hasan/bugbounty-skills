@@ -1,0 +1,18 @@
+   2175 xss
+   1949 auth
+   1499 rce
+   1297 bypass
+    713 idor
+    496 ssrf
+    433 escalat
+    422 csrf
+    405 privilege
+    233 open redirect
+    146 lfi
+    122 xxe
+    105 secret
+     78 graphql
+     55 postmessage
+     49 sqli
+     20 prototype
+     19 innerhtml

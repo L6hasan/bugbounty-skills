@@ -1,0 +1,147 @@
+# ==========================================================
+# SECURITY: কখনো commit হবে না
+# ==========================================================
+
+# ---- Raw HTTP evidence, responses, headers ----
+**/evidence/**
+*.body
+*.hdr
+*.transcript
+*_raw.txt
+endpoints_raw.txt
+
+# ---- Hunt state per target (endpoints, findings, tokens) ----
+**/state/targets/**
+**/state/targets/*/**
+*/state/targets/*
+
+# ---- Submitted bug bounty reports (PDF + HTML) ----
+**/reports/**
+*.pdf
+*.pdf.html
+*_report.pdf
+report-*.md
+*/reports/*
+
+# ---- Findings / verdicts raw data ----
+**/findings/*.jsonl
+**/findings/*.json
+**/principal/findings/**
+**/principal/history/**
+**/principal/state/**
+**/principal/reports/**
+**/principal/wave-*.jsonl
+**/principal/map-*.jsonl
+**/principal/recon-*.jsonl
+**/principal/verdicts-*.jsonl
+**/principal/chain-*.jsonl
+**/principal/task_queue.json
+**/principal/cycle_state.json
+**/principal/coverage.json
+**/principal/endpoints.json*
+**/principal/features.json*
+**/principal/assets.json
+**/principal/roles.json*
+**/principal/ssc-frontier.json
+**/principal/*.bak*
+**/principal/*.bak-*
+**/principal/*.polluted*
+**/principal/*.corrupt*
+
+# ---- Per-domain recon / target evidence ----
+Myskill/domains/*/evidence/
+Myskill/domains/*/findings/
+Myskill/domains/*/reports/
+Myskill/domains/*/raw/
+Myskill/domains/*/scans/
+Myskill/domains/*/recon/
+Myskill/domains/*/*.jsonl
+Myskill/domains/*/*.body
+Myskill/domains/*/*.hdr
+
+# ---- Secrets, tokens, cookies ----
+*.pem
+*.key
+*.crt
+.env
+.env.*
+**/*secret*
+**/*token*
+**/*cookie*
+**/*credential*
+**/*password*
+**/*apikey*
+**/*api_key*
+**/*auth*
+**/.netrc
+**/.aws/
+**/.ssh/
+
+# ---- Databases, binary, archives ----
+*.db
+*.sqlite
+*.sqlite3
+*-wal
+*-shm
+*.lock
+*.bin
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.exe
+*.so
+*.dylib
+*.jar
+*.apk
+*.dex
+*.pyc
+
+# ---- Large web assets ----
+*.js.map
+*.source.ts
+embedded-source.*
+main-*.js
+*.min.js
+*.bundle.js
+
+# ---- Python / Node ----
+__pycache__/
+*.pyo
+node_modules/
+.pnpm-store/
+.npm/
+.nvm/
+
+# ---- Editor / OS ----
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*~
+
+# ---- Logs ----
+*.log
+
+# ---- Local config ----
+config.local.*
+*.local.md
+
+# ---- Backup files (git versions handle this) ----
+*.bak
+*.bak.*
+*.pre*.bak
+*.pre-*.bak
+*.bak-*
+*.bak.*
+
+# ---- Submission reports (target-specific) ----
+skills-md/SUBSPACE-SUB-*
+skills-md/*submission*.md
+
+# ---- CT scan names / target recon references ----
+Myskill/domains/*/references/ct-names.txt
+Myskill/domains/*/references/*_names.txt
+
+# ---- Local findings / verdicts per target ----
+Myskill/domains/*/findings/

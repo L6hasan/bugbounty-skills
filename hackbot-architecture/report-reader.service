@@ -1,0 +1,24 @@
+[Unit]
+Description=Report-reader loop — read disclosed reports/writeups one by one, upgrade the skill, Discord digest every 100
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+Environment=HOME=/root
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/root/.local/bin:/root/.hermes/hermes-agent/.hermes/bin
+Environment=READER_BATCH=6
+Environment=READER_GAP=180
+Environment=READER_MILESTONE=100
+Environment=READER_HARVEST_EVERY=8
+WorkingDirectory=/root/hackbot-architecture
+ExecStart=/bin/bash /root/hackbot-architecture/report-reader-loop.sh
+Restart=always
+RestartSec=60
+TimeoutStopSec=30
+StandardOutput=append:/root/hackbot-architecture/state/report-reader-loop.out
+StandardError=append:/root/hackbot-architecture/state/report-reader-loop.err
+
+[Install]
+WantedBy=multi-user.target
