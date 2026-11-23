@@ -30,6 +30,10 @@ export PATH="/root/.hermes/hermes-agent/.hermes/bin:/root/go/bin:/usr/local/bin:
 HA=/root/hackbot-architecture
 PR="$HA/principal"
 PROMPTS="$PR/prompts"
+# Modular hunting skill — the FIRST methodology source for every agent (see common_rules).
+# Must be defined here: common_rules interpolates it inside an unquoted heredoc, so an
+# unset value aborts the whole prompt under `set -u` and the agent gets no scope/doctrine.
+SKILL_DIR="/root/.hermes/skills/web/web-vulnerability-hunting"
 PS="$PR/state"
 PF="$PR/findings"
 PEV="$PR/evidence"
@@ -155,6 +159,7 @@ $([ -n "$HOSTS" ] && [ -f "$HOSTS" ] && echo "STRICT ALLOWLIST ($HOSTS) — thes
 $([ -n "$EXCLUSIONS" ] && [ -f "$EXCLUSIONS" ] && { echo "EXCLUSIONS / NOISE ($EXCLUSIONS):"; grep -E '^(EXCLUDE|PRIORITY|BLOCK)' "$EXCLUSIONS" 2>/dev/null | sed 's/^/  /'; })
 STATE DIR: $STATE
 PRINCIPAL STATE: $PST
+SKILL_DIR: /root/.hermes/skills/web/web-vulnerability-hunting
 $([ -f "$PST/program_rules.md" ] && { echo "PROGRAM RULES (BINDING — read $PST/program_rules.md in full before choosing work):"; sed 's/^/  /' "$PST/program_rules.md"; })
 
 HARD RULES: non-destructive only. No DoS/DDoS, no brute force beyond a handful of probes,
@@ -169,9 +174,21 @@ SERVICE GUARD: never stop/restart/disable any systemd unit and never kill any pr
 The operator manages the loops. Write a note to the supervisor log instead.
 FABRICATION: never invent endpoints, findings, responses, screenshots or commands.
 
-METHODOLOGY ROUTING (binding). Do NOT read the 47k-line ledgers top-to-bottom.
-Route: grep -n -i '<class>' $HA/knowledge/SKILL-INDEX.md then read_file(<ledger>, offset=<line-5>, limit=200)
-Modular per-class files: $HA/knowledge/modular/<class>.md (+ <class>.index.md)
+METHODOLOGY ROUTING (binding). Do NOT read the ledgers top-to-bottom and do NOT load a whole
+playbook file. Route in this order:
+  1. The modular hunting skill is the FIRST source:
+       SKILL  = /root/.hermes/skills/web/web-vulnerability-hunting/SKILL.md
+       CLASS  = $SKILL_DIR/vulnerabilities/<class>.md          (one class only)
+       METHOD = $SKILL_DIR/references/{audit-rules,exploit-validation,
+                false-positive-elimination,waf-bypass,chaining,severity-guide}.md
+     Read SKILL.md once per pass, then ONLY the class file for the cell you are working plus
+     references/audit-rules.md. Do not read vulnerabilities/ files for classes you are not testing.
+  2. Harvested atoms for that class (deep techniques, already deduped):
+       $SKILL_DIR/vulnerabilities/intake/<class>-NN.md      (grep the heading, then read)
+       manifest: $SKILL_DIR/INTAKE-INDEX.md
+  3. Legacy ledgers, only if 1-2 did not cover the technique:
+       grep -n -i '<class>' $HA/knowledge/SKILL-INDEX.md then read_file(<ledger>, offset=<line-5>, limit=200)
+       Modular per-class files: $HA/knowledge/modular/<class>.md (+ <class>.index.md)
 SEVERITY DOCTRINE — INLINED VERBATIM AND BINDING. This is NOT a pointer; the rule follows. Do not
 skip it and do not claim you read a file: the text below IS the standard you are judged against.
 $(cat "$HA/SEVERITY_DOCTRINE.md" 2>/dev/null | sed 's/^/  /')
@@ -183,7 +200,7 @@ P4/P5 SELF-CHECK (run BEFORE emitting any candidate; the most common self-inflic
   - Emitting a header/cookie-flag/TLS/version/banner/stack-trace/CORS-without-impact/open-redirect/
     self-XSS/clickjacking/rate-limit/CSV-injection item as a candidate is a PROCESS ERROR. Do not do it.
   - If your last three candidates were P4/P5, STOP and change ASSET or CLASS — do not lower the floor.
-  - It is correct and expected to end a pass with: `no reportable finding — N primitives held as leads`.
+  - It is correct and expected to end a pass with: \`no reportable finding — N primitives held as leads\`.
 RULES
   cat "$HA/knowledge/SKILL-CORE.md" 2>/dev/null | sed 's/^/  /'
 }
@@ -483,6 +500,33 @@ phase_report(){
   log "PHASE report done"
 }
 
+FLOOR_FAILS=0
+phase_coverage_review(){
+  # MANDATORY end-of-cycle step: reconcile the inventory, find uncovered (host,class)
+  # pairs, and MATERIALISE them as new UNTESTED rows so the next cycle has work.
+  # Without this the loop can end a cycle with an empty task queue and idle.
+  log "PHASE coverage-review begin"
+  local out rc
+  out=$(python3 "$PR/coverage-review.py" --slug "$SLUG" --state "$STATE" --pst "$PST" \
+        ${HOSTS:+--hosts "$HOSTS"} --min-tasks 5 2>&1)
+  rc=$?
+  log "   coverage-review: $out"
+  if [ "$rc" = 0 ]; then
+    FLOOR_FAILS=0
+  else
+    FLOOR_FAILS=$((FLOOR_FAILS+1))
+    log "   WARNING: coverage-review produced no gaps (rc=$rc, floor_fails=$FLOOR_FAILS)"
+    # Escalate rather than idle: if there is nothing left, the target is exhausted and the
+    # operator must switch, not the loop silently spinning on closed classes.
+    if [ "$FLOOR_FAILS" -ge 2 ]; then
+      printf '%s\n' "{\"ts\":\"$(now)\",\"slug\":\"$SLUG\",\"issue\":\"coverage exhausted — no untested (host,class) pairs remain; switch target or widen scope\",\"action\":\"operator\"}" \
+        >> "$STATE/loop/target-exhausted.jsonl"
+      log "   EXHAUSTED: target-exhausted.jsonl written — operator action required"
+    fi
+  fi
+  log "PHASE coverage-review done"
+}
+
 phase_knowledge(){
   log "PHASE knowledge begin"
   bash "$HA/research-upgrade.sh" --if-due >>"$LOG" 2>&1 || log "   (research-upgrade non-zero)"
@@ -515,6 +559,7 @@ run_cycle(){
   phase_chain;   cycle_record "chain done" "chain"
   phase_validate; cycle_record "validate done" "validate"
   phase_report;  cycle_record "report done" "report"
+  phase_coverage_review; cycle_record "coverage-review done" "coverage-review"
   phase_knowledge; cycle_record "knowledge done" "knowledge"
   log "══ CYCLE $CYCLE complete — sleeping ${LOOP_GAP}s ══"
   return 0
@@ -556,6 +601,17 @@ selftest(){
   python3 "$PR/slicer.py" "$PS/selftest-cov.tsv" "$PS/selftest-slices" 10 >/dev/null 2>&1; chk $? "slicer rc"
   [ -s "$PS/selftest-slices/injection.txt" ]; chk $? "slicer produced injection slice"
   [ ! -s "$PS/selftest-slices/clientside.txt" ]; chk $? "slicer excluded TESTED row"
+
+  # 5b. coverage-review floor: it must emit >=5 probeable gap tasks, never idle
+  local gapdir="$PS/selftest-gap"; mkdir -p "$gapdir/loop"
+  printf 'host\tendpoint\tmethod\tvuln_class\tstatus\tevidence_path\treason\tauth_state\trole\tupdated\n' \
+    > "$gapdir/loop/coverage.tsv"
+  printf 't.example\t/api/users/1\tGET\tauthz_idor\tTESTED\t-\tclosed\t-\t-\t%s\n' "$(now)" \
+    >> "$gapdir/loop/coverage.tsv"
+  local grc; python3 "$PR/coverage-review.py" --slug selftest --state "$gapdir" --pst "$PS/selftest-gap-ps" --min-tasks 5 >/dev/null 2>&1
+  grc=$?; [ "$grc" = 0 ]; chk $? "coverage-review rc=0 (got $grc)"
+  local gn; gn=$(jq '.tasks|length' "$PS/selftest-gap-ps/task_queue.json" 2>/dev/null)
+  [ "${gn:-0}" -ge 5 ]; chk $? "coverage-review queued >=5 tasks (got ${gn:-0})"
 
   # 6. lock behaviour
   ( exec 9>"$LOCK"; flock -n 9 ) ; [ $? -ne 0 ]; chk $? "lock is held by this process"

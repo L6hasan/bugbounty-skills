@@ -30,6 +30,10 @@ done
 # microkeeper-com-au and silently strands every artefact in a parallel tree.
 [ -n "$SLUG" ] || SLUG="$(printf '%s' "$T" | tr 'A-Z' 'a-z' | sed 's/[^a-z0-9]/-/g')"
 ST="/root/state/recon/$SLUG"; SURF="$ST/surface"; COV="$ST/loop/coverage.tsv"
+# HA = this script's own directory. Referenced by the opt-in brute stage for the curated
+# wordlist; it was never defined, so enabling TARGET_BRUTE=1 aborted that stage with
+# "HA: unbound variable" under `set -u` and silently skipped directory discovery entirely.
+HA="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 mkdir -p "$SURF" "$ST/loop"
 [ -f "$COV" ] || printf 'host\tendpoint\tmethod\tvuln_class\tstatus\tevidence_path\treason\tauth_state\trole\tupdated\n' > "$COV"
 UA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"

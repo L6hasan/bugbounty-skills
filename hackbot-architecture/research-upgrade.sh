@@ -150,5 +150,10 @@ fi
 # Surface the outcome to Discord only when something real landed.
 if [ "$DELTA" -gt 0 ]; then
   bash "$ROOT/notch.sh" "📚 **Skill upgraded** — research pass added $DELTA new line(s) of methodology from disclosed reports/writeups. Ledger: /root/bugbountyhuntingskills.md, dated: $OUT_MD" >/dev/null 2>&1 || true
+  # Re-split the monoliths into the modular skill so workers see the new atoms without
+  # reading a 23k-line file. Idempotent: regenerates vulnerabilities/intake/*.md,
+  # references/intake/*.md and the byte-identical archive copies from the monoliths.
+  python3 "$ROOT/migrate_monoliths.py" >>"$ROOT/principal/supervisor.log" 2>&1 \
+    || log "research: migrate_monoliths.py failed — atoms stay in the monolith only"
 fi
 exit 0
